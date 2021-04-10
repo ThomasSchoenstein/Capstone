@@ -130,7 +130,7 @@ int main(void)
   }
 
   //preset for tomato plants
-  setTemp_Level=75;      //degrees farenheight
+  setTemp_Level=73;      //degrees farenheight
   setHumidity_Level=90;  //percent humidity
   setLight_Time=8;       //hours of light
   setPH_Level=6;         //PH
