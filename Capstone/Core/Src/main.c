@@ -40,6 +40,11 @@ typedef enum h2oSensors{
 	wet,
 }h2oSensor;
 
+typedef enum PumpM{
+	on,
+	off,
+}MainPump;
+
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -58,6 +63,15 @@ double currentPH=20;        //set equal to values that should never be the case 
 double currentPPM=0;
 double currentTemp=0;
 double currentHumidity=200;
+
+MainPump state=off;
+MainPump pumpa=off;
+MainPump pumpb=off;
+MainPump pumpc=off;
+MainPump light;
+int s;
+int Tickt;
+int min3;
 
 /* USER CODE END PD */
 
@@ -84,6 +98,7 @@ static void MX_ADC1_Init(void);
 double getPH(void);
 PHlevel PHtask(double PH_Set);
 h2oSensor H2Otask(void);
+MainPump PHpumps(void);
 
 /* USER CODE END PFP */
 
@@ -122,6 +137,10 @@ int main(void)
   MX_GPIO_Init();
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
+
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0,1); //When it starts it turns on Lights
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1,1); //When it starts it turns on Lights
+
   if (HAL_ADC_Start(&hadc1) != HAL_OK)
   {
     /* Calibration Error */
@@ -148,6 +167,8 @@ int main(void)
 	  currentPH=getPH();
 	  PH=PHtask(setPH_Level);
 	  wetness=H2Otask();
+	  PHpumps();
+	  water();
 
   }
   /* USER CODE END 3 */
@@ -354,6 +375,65 @@ h2oSensor H2Otask(void){
 
 	return wetness;
 }
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
+	if(htim == &htim2){
+		if(Tickt == 6){
+			Tickt = 0;
+			min3++;
+		}
+		if(min3 == 480){
+			min3 = 0;
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0,1);
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1,1);
+			light = on;
+		}
+		if(Tickt < 1 && state==off){
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,1);
+		state = on;
+		}
+		if(Tickt >= 1 && state==on){
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,0);
+		state=off;
+		}
+		Tickt++;
+if(min3 == 160){
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0,0);
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1,0);
+	light = off;
+}
+	}
+}
+
+MainPump PHpumps(void){
+	if(PH==PH_Low || PH==PH_VeryLow ){
+		HAL_GPIO_WritePin(GPIOB,GPIO_PIN_5,1);
+		pumpb=on;
+	}
+	if(PH==PH_High || PH==PH_VeryHigh){
+			HAL_GPIO_WritePin(GPIOB,GPIO_PIN_4,1);
+			pumpa=on;
+	}
+if(PH==PH_Good){
+	HAL_GPIO_WritePin(GPIOB,GPIO_PIN_5,0);
+	HAL_GPIO_WritePin(GPIOB,GPIO_PIN_4,0);
+	pumpb=off;
+	pumpa=off;
+}
+return;
+}
+
+h2oSensor water(void){
+	if(wetness==dry){
+		HAL_GPIO_WritePin(GPIOB,GPIO_PIN_3,1);
+		pumpc=on;
+	}
+	if(wetness==wet){
+		HAL_GPIO_WritePin(GPIOB,GPIO_PIN_3,0);
+		pumpc=off;
+	}
+}
+
 /* USER CODE END 4 */
 
 /**
