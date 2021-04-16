@@ -125,7 +125,6 @@ int main(void)
   if (HAL_ADC_Start(&hadc1) != HAL_OK)
   {
     /* Calibration Error */
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 0);   //error flicks this LED on so make sure it's off to start
     Error_Handler();
   }
 
@@ -305,27 +304,6 @@ double getPH(void){
 }
 
 PHlevel PHtask(double setLevel){
-/*	double PH=7;
-	double Vnormalization=1227;
-	double Vadc=0;
-	double Vin=0;
-	PHlevel phLevel;
-
-	ADC_ChannelConfTypeDef sConfig;
-	sConfig.Channel = ADC_CHANNEL_8;      //PIN B0
-	sConfig.Rank = ADC_REGULAR_RANK_1;
-	sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
-	HAL_ADC_ConfigChannel(&hadc1, &sConfig);        //Changes the ADC channel to PH sensor
-
-	HAL_ADC_Start(&hadc1);
-	HAL_ADC_PollForConversion(&hadc1, 10);
-	HAL_Delay(10);  //delay for conversion time, if not it errors
-	Vadc=HAL_ADC_GetValue(&hadc1);    //ADC results in a value that isn't directly tied to the voltage
-	HAL_ADC_Stop(&hadc1);          //stop adc conversion
-	Vin=Vadc/Vnormalization;        //devide the ADC value by the normalization constant to find the Vin, normilization constant found by compairing measured voltage with output
-	PH=20.667-5.197*Vin;           //plug Vin into this function to find the PH This function was found by measuring the voltage at known PHs and plotting
-*/
-
 	PHlevel phLevel;
 	double PH=7;
 
