@@ -147,6 +147,8 @@ int main(void)
 
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0,1); //When it starts it turns on Lights
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1,1); //When it starts it turns on Lights
+  HAL_TIM_Base_Start_IT(&htim2);
+
 
   if (HAL_ADC_Start(&hadc1) != HAL_OK)
   {
