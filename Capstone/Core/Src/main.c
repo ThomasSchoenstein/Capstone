@@ -45,6 +45,18 @@ typedef enum PumpM{
 	off,
 }MainPump;
 
+typedef enum tempLevels{
+	Temp_hot,
+	Temp_good,
+	Temp_cold,
+}tempreture;
+
+typedef enum humidLevels{
+	Humid_high,
+	Humid_good,
+	Humid_low,
+}humidity;
+
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -52,6 +64,8 @@ typedef enum PumpM{
 
 PHlevel PH;
 h2oSensor wetness;
+tempreture temp;
+humidity humid;
 
 double setTemp_Level;
 double setHumidity_Level;
@@ -73,6 +87,21 @@ int s;
 int Tickt;
 int min3;
 
+//Tempreture Variables
+extern I2C_HandleTypeDef hi2c1;
+uint8_t data[3];
+uint8_t da[1] = {0xFE};
+uint8_t read[2]= {0xE3,0xE5};
+uint8_t data1[3];
+double tempp;
+double hu;
+uint16_t sum_temp,sum_humid;
+I2C_HandleTypeDef hi2c1;
+
+double enviorment[2];
+tempreture tempLevel;
+humidity humidLevel;
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -82,6 +111,8 @@ int min3;
 
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
+
+I2C_HandleTypeDef hi2c2;
 
 TIM_HandleTypeDef htim2;
 
@@ -97,6 +128,7 @@ static void MX_GPIO_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_USB_PCD_Init(void);
 static void MX_TIM2_Init(void);
+static void MX_I2C2_Init(void);
 /* USER CODE BEGIN PFP */
 
 double getPH(void);
@@ -104,6 +136,9 @@ PHlevel PHtask(double PH_Set);
 h2oSensor H2Otask(void);
 MainPump PHpumps(void);
 h2oSensor water(void);
+void get_TempHumid(void);
+tempreture TempTask(double setLevel);
+humidity humidTask(double setLevel);
 
 /* USER CODE END PFP */
 
@@ -143,6 +178,7 @@ int main(void)
   MX_ADC1_Init();
   MX_USB_PCD_Init();
   MX_TIM2_Init();
+  MX_I2C2_Init();
   /* USER CODE BEGIN 2 */
 
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0,1); //When it starts it turns on Lights
@@ -174,11 +210,14 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
-	  wetness=H2Otask();          //Checks if Resivoir is full
-	  currentPH=getPH();          //Gets the PH value
-	  PH=PHtask(setPH_Level);     //Determines if PH is too High/low
-	  PHpumps();                  //Pumps to amend PH
-	  water();                    //Main pump operation
+	  wetness=H2Otask();           			 //Checks if Resivoir is full
+	  currentPH=getPH();         			 //Gets the PH value
+	  PH=PHtask(setPH_Level);     			 //Determines if PH is too High/low
+	  PHpumps();                 			 //Pumps to amend PH
+	  water();                    			 //Main pump operation
+	  get_TempHumid();            			 //gets tempreture and humidity
+	  temp=TempTask(setTemp_Level);          //determines if temp is too high/low
+	  humid=humidTask(setHumidity_Level);    //determines if humidity is too high/low
 
   }
   /* USER CODE END 3 */
@@ -272,6 +311,40 @@ static void MX_ADC1_Init(void)
   /* USER CODE BEGIN ADC1_Init 2 */
 
   /* USER CODE END ADC1_Init 2 */
+
+}
+
+/**
+  * @brief I2C2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_I2C2_Init(void)
+{
+
+  /* USER CODE BEGIN I2C2_Init 0 */
+
+  /* USER CODE END I2C2_Init 0 */
+
+  /* USER CODE BEGIN I2C2_Init 1 */
+
+  /* USER CODE END I2C2_Init 1 */
+  hi2c2.Instance = I2C2;
+  hi2c2.Init.ClockSpeed = 100000;
+  hi2c2.Init.DutyCycle = I2C_DUTYCYCLE_2;
+  hi2c2.Init.OwnAddress1 = 0;
+  hi2c2.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c2.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c2.Init.OwnAddress2 = 0;
+  hi2c2.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c2.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN I2C2_Init 2 */
+
+  /* USER CODE END I2C2_Init 2 */
 
 }
 
@@ -531,6 +604,51 @@ h2oSensor water(void){
 		HAL_GPIO_WritePin(GPIOB,GPIO_PIN_3,0);
 		pumpc=off;
 	}
+}
+
+void get_TempHumid(void){
+
+	// HAL_GPIO_TogglePin(LD2_GPIO_Port,LD2_Pin);
+	HAL_I2C_Master_Transmit(&hi2c1,0x80,&read[0],1,100);
+	HAL_I2C_Master_Receive(&hi2c1,0x80,data,3,1000);
+	sum_temp = (data[0]<<8) | data[1];
+	tempp	= sum_temp;
+	enviorment[0] = (-46.85 + (175.72*(tempp/65536)));
+	HAL_Delay(20);
+	HAL_I2C_Master_Transmit(&hi2c1,0x80,&read[1],1,100);
+	HAL_I2C_Master_Receive(&hi2c1,0x80,data1,3,1000);
+	sum_humid= (data1[0]<<8) | data1[1];
+	hu= sum_humid;
+	enviorment[1] = (-6+(125*(hu/65536)));
+	HAL_Delay(20);
+}
+
+tempreture TempTask(double setLevel){
+	tempreture relitiveTemp;
+
+	if(enviorment[0]<setLevel-5)
+		relitiveTemp=Temp_cold;
+	else if(enviorment[0]>setLevel+5){
+		relitiveTemp=Temp_hot;
+	}
+	else
+		relitiveTemp=Temp_good;
+	return relitiveTemp;
+}
+
+humidity humidTask(double setLevel){
+	humidity relitiveHumid;
+
+	if(enviorment[1]<setLevel-5){
+		relitiveHumid=Humid_low;
+	}
+	else if(enviorment[1]>setLevel+5){
+		relitiveHumid=Humid_high;
+	}
+	else
+		relitiveHumid=Humid_good;
+
+	return relitiveHumid;
 }
 
 /* USER CODE END 4 */
