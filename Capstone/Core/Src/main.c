@@ -173,11 +173,12 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  currentPH=getPH();
-	  PH=PHtask(setPH_Level);
-	  wetness=H2Otask();
-	  PHpumps();
-	  water();
+
+	  wetness=H2Otask();          //Checks if Resivoir is full
+	  currentPH=getPH();          //Gets the PH value
+	  PH=PHtask(setPH_Level);     //Determines if PH is too High/low
+	  PHpumps();                  //Pumps to amend PH
+	  water();                    //Main pump operation
 
   }
   /* USER CODE END 3 */
@@ -414,10 +415,10 @@ double getPH(void){
 	HAL_ADC_Start(&hadc1);
 	HAL_ADC_PollForConversion(&hadc1, 10);
 	HAL_Delay(10);  //delay for conversion time, if not it errors
-	Vadc=HAL_ADC_GetValue(&hadc1);    //ADC results in a value that isn't directly tied to the voltage
-	HAL_ADC_Stop(&hadc1);          //stop adc conversion
+	Vadc=HAL_ADC_GetValue(&hadc1);  //ADC results in a value that isn't directly tied to the voltage
+	HAL_ADC_Stop(&hadc1);           //stop adc conversion
 	Vin=Vadc/Vnormalization;        //devide the ADC value by the normalization constant to find the Vin, normilization constant found by compairing measured voltage with output
-	PH=20.667-5.197*Vin;           //plug Vin into this function to find the PH This function was found by measuring the voltage at known PHs and plotting
+	PH=20.667-5.197*Vin;            //plug Vin into this function to find the PH This function was found by measuring the voltage at known PHs and plotting
 
 	return PH;
 }
