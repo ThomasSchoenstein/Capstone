@@ -57,15 +57,23 @@ typedef enum humidLevels{
 	Humid_low,
 }humidity;
 
+typedef enum tdsLevels{
+	TDS_Low,
+	TDS_Good,
+	TDS_High,
+}TDSlevel;
+
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
 PHlevel PH;
+TDSlevel TDS;
 h2oSensor wetness;
 tempreture temp;
 humidity humid;
+TDSlevel TDS;
 
 double setTemp_Level;
 double setHumidity_Level;
@@ -82,6 +90,7 @@ MainPump state=off;
 MainPump pumpa=off;
 MainPump pumpb=off;
 MainPump pumpc=off;
+MainPump pumpd=off;
 MainPump light;
 int s;
 int Tickt;
@@ -135,10 +144,12 @@ double getPH(void);
 PHlevel PHtask(double PH_Set);
 h2oSensor H2Otask(void);
 MainPump PHpumps(void);
+MainPump Nutrients(void);
 h2oSensor water(void);
 void get_TempHumid(void);
 tempreture TempTask(double setLevel);
 humidity humidTask(double setLevel);
+TDSlevel TDStask(double setLevel);
 
 /* USER CODE END PFP */
 
@@ -214,11 +225,12 @@ int main(void)
 	  currentPH=getPH();         			 //Gets the PH value
 	  PH=PHtask(setPH_Level);     			 //Determines if PH is too High/low
 	  PHpumps();                 			 //Pumps to amend PH
-	  water();                    			 //Main pump operation
+//	  water();                    			 //Main pump operation
 	  get_TempHumid();            			 //gets tempreture and humidity
 	  temp=TempTask(setTemp_Level);          //determines if temp is too high/low
 	  humid=humidTask(setHumidity_Level);    //determines if humidity is too high/low
-
+	  TDS=TDStask(setPPM_Level); 			 //determines if TDS (PPM) is too high/low
+	  Nutrients();
   }
   /* USER CODE END 3 */
 }
@@ -595,6 +607,7 @@ if(PH==PH_Good){
 return;
 }
 
+/*
 h2oSensor water(void){
 	if(wetness==dry){
 		HAL_GPIO_WritePin(GPIOB,GPIO_PIN_3,1);
@@ -604,6 +617,24 @@ h2oSensor water(void){
 		HAL_GPIO_WritePin(GPIOB,GPIO_PIN_3,0);
 		pumpc=off;
 	}
+}
+*/
+
+MainPump Nutrients(void){
+	if(TDS==TDS_Low){
+			HAL_GPIO_WritePin(GPIOB,GPIO_PIN_6,1);
+			pumpd=on;
+		}
+	if(TDS==TDS_High){
+		HAL_GPIO_WritePin(GPIOB,GPIO_PIN_3,1);
+		pumpc=on;
+	}
+	if(TDS==TDS_Good){
+		HAL_GPIO_WritePin(GPIOB,GPIO_PIN_6,0);
+		pumpd=off;
+		pumpc=off;
+	}
+return;
 }
 
 void get_TempHumid(void){
@@ -649,6 +680,40 @@ humidity humidTask(double setLevel){
 		relitiveHumid=Humid_good;
 
 	return relitiveHumid;
+}
+
+TDSlevel TDStask(double setLevel){
+	double TDS=0;
+	double Vnormalization=1227;
+	double Vadc=0;
+	double Vin=0;
+	TDSlevel TDSLevel;
+
+	ADC_ChannelConfTypeDef sConfig;
+	sConfig.Channel = ADC_CHANNEL_7;      //PIN A7
+	sConfig.Rank = ADC_REGULAR_RANK_1;
+	sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
+	HAL_ADC_ConfigChannel(&hadc1, &sConfig);        //Changes the ADC channel to TDS sensor
+
+	HAL_ADC_Start(&hadc1);
+	HAL_ADC_PollForConversion(&hadc1, 10);
+	HAL_Delay(10);  //delay for conversion time, if not it errors
+	Vadc=HAL_ADC_GetValue(&hadc1);    //ADC results in a value that isn't directly tied to the voltage
+	HAL_ADC_Stop(&hadc1);          //stop adc conversion
+	Vin=Vadc/Vnormalization;        //devide the ADC value by the normalization constant to find the Vin, normilization constant found by compairing measured voltage with output
+	TDS=1026*Vin-589.79;           //Converts Vin to TDS value
+
+	if(TDS==setLevel+100 || TDS==setLevel-.100){   //if within .5 PH of chosen value everything is OK
+		TDSLevel=TDS_Good;
+	}
+	else if(TDS>setLevel+100){     //if slightly above the allowed range
+		TDSLevel=TDS_High;
+	}
+	else if(TDS<setLevel-100){   //if slightly below the allowed range
+		TDSLevel=TDS_Low;
+	}
+
+	return TDSLevel;
 }
 
 /* USER CODE END 4 */
