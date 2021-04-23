@@ -57,6 +57,12 @@ typedef enum humidLevels{
 	Humid_low,
 }humidity;
 
+typedef enum tdsLevels{
+	TDS_Low,
+	TDS_Good,
+	TDS_High,
+}TDSlevel;
+
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -66,6 +72,7 @@ PHlevel PH;
 h2oSensor wetness;
 tempreture temp;
 humidity humid;
+TDSlevel TDS;
 
 double setTemp_Level;
 double setHumidity_Level;
@@ -139,6 +146,7 @@ h2oSensor water(void);
 void get_TempHumid(void);
 tempreture TempTask(double setLevel);
 humidity humidTask(double setLevel);
+TDSlevel TDStask(double setLevel);
 
 /* USER CODE END PFP */
 
@@ -218,7 +226,7 @@ int main(void)
 	  get_TempHumid();            			 //gets tempreture and humidity
 	  temp=TempTask(setTemp_Level);          //determines if temp is too high/low
 	  humid=humidTask(setHumidity_Level);    //determines if humidity is too high/low
-
+	  TDS=TDStask(setPPM_Level); 			 //determines if TDS (PPM) is too high/low
   }
   /* USER CODE END 3 */
 }
@@ -649,6 +657,40 @@ humidity humidTask(double setLevel){
 		relitiveHumid=Humid_good;
 
 	return relitiveHumid;
+}
+
+TDSlevel TDStask(double setLevel){
+	double TDS=0;
+	double Vnormalization=1227;
+	double Vadc=0;
+	double Vin=0;
+	TDSlevel TDSLevel;
+
+	ADC_ChannelConfTypeDef sConfig;
+	sConfig.Channel = ADC_CHANNEL_7;      //PIN A7
+	sConfig.Rank = ADC_REGULAR_RANK_1;
+	sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
+	HAL_ADC_ConfigChannel(&hadc1, &sConfig);        //Changes the ADC channel to TDS sensor
+
+	HAL_ADC_Start(&hadc1);
+	HAL_ADC_PollForConversion(&hadc1, 10);
+	HAL_Delay(10);  //delay for conversion time, if not it errors
+	Vadc=HAL_ADC_GetValue(&hadc1);    //ADC results in a value that isn't directly tied to the voltage
+	HAL_ADC_Stop(&hadc1);          //stop adc conversion
+	Vin=Vadc/Vnormalization;        //devide the ADC value by the normalization constant to find the Vin, normilization constant found by compairing measured voltage with output
+	TDS=1026*Vin-589.79;           //Converts Vin to TDS value
+
+	if(TDS==setLevel+100 || TDS==setLevel-.100){   //if within .5 PH of chosen value everything is OK
+		TDSLevel=TDS_Good;
+	}
+	else if(TDS>setLevel+100){     //if slightly above the allowed range
+		TDSLevel=TDS_High;
+	}
+	else if(TDS<setLevel-100){   //if slightly below the allowed range
+		TDSLevel=TDS_Low;
+	}
+
+	return TDSLevel;
 }
 
 /* USER CODE END 4 */
