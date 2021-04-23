@@ -660,14 +660,14 @@ humidity humidTask(double setLevel){
 }
 
 TDSlevel TDStask(double setLevel){
-	double TDS=7;
+	double TDS=0;
 	double Vnormalization=1227;
 	double Vadc=0;
 	double Vin=0;
 	TDSlevel TDSLevel;
 
 	ADC_ChannelConfTypeDef sConfig;
-	sConfig.Channel = ADC_CHANNEL_8;      //PIN B0
+	sConfig.Channel = ADC_CHANNEL_7;      //PIN A7
 	sConfig.Rank = ADC_REGULAR_RANK_1;
 	sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
 	HAL_ADC_ConfigChannel(&hadc1, &sConfig);        //Changes the ADC channel to TDS sensor
@@ -678,15 +678,15 @@ TDSlevel TDStask(double setLevel){
 	Vadc=HAL_ADC_GetValue(&hadc1);    //ADC results in a value that isn't directly tied to the voltage
 	HAL_ADC_Stop(&hadc1);          //stop adc conversion
 	Vin=Vadc/Vnormalization;        //devide the ADC value by the normalization constant to find the Vin, normilization constant found by compairing measured voltage with output
-	TDS=20.667-5.197*Vin;           //
+	TDS=1026*Vin-589.79;           //Converts Vin to TDS value
 
-	if(TDS==setLevel+.25 || TDS==setLevel-.25){   //if within .5 PH of chosen value everything is OK
+	if(TDS==setLevel+100 || TDS==setLevel-.100){   //if within .5 PH of chosen value everything is OK
 		TDSLevel=TDS_Good;
 	}
-	else if(TDS>setLevel+.25){     //if slightly above the allowed range
+	else if(TDS>setLevel+100){     //if slightly above the allowed range
 		TDSLevel=TDS_High;
 	}
-	else if(TDS<setLevel-.25){   //if slightly below the allowed range
+	else if(TDS<setLevel-100){   //if slightly below the allowed range
 		TDSLevel=TDS_Low;
 	}
 
