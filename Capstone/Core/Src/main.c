@@ -69,6 +69,7 @@ typedef enum tdsLevels{
 /* USER CODE BEGIN PD */
 
 PHlevel PH;
+TDSlevel TDS;
 h2oSensor wetness;
 tempreture temp;
 humidity humid;
@@ -89,6 +90,7 @@ MainPump state=off;
 MainPump pumpa=off;
 MainPump pumpb=off;
 MainPump pumpc=off;
+MainPump pumpd=off;
 MainPump light;
 int s;
 int Tickt;
@@ -142,6 +144,7 @@ double getPH(void);
 PHlevel PHtask(double PH_Set);
 h2oSensor H2Otask(void);
 MainPump PHpumps(void);
+MainPump Nutrients(void);
 h2oSensor water(void);
 void get_TempHumid(void);
 tempreture TempTask(double setLevel);
@@ -222,11 +225,12 @@ int main(void)
 	  currentPH=getPH();         			 //Gets the PH value
 	  PH=PHtask(setPH_Level);     			 //Determines if PH is too High/low
 	  PHpumps();                 			 //Pumps to amend PH
-	  water();                    			 //Main pump operation
+//	  water();                    			 //Main pump operation
 	  get_TempHumid();            			 //gets tempreture and humidity
 	  temp=TempTask(setTemp_Level);          //determines if temp is too high/low
 	  humid=humidTask(setHumidity_Level);    //determines if humidity is too high/low
 	  TDS=TDStask(setPPM_Level); 			 //determines if TDS (PPM) is too high/low
+	  Nutrients();
   }
   /* USER CODE END 3 */
 }
@@ -603,6 +607,7 @@ if(PH==PH_Good){
 return;
 }
 
+/*
 h2oSensor water(void){
 	if(wetness==dry){
 		HAL_GPIO_WritePin(GPIOB,GPIO_PIN_3,1);
@@ -612,6 +617,24 @@ h2oSensor water(void){
 		HAL_GPIO_WritePin(GPIOB,GPIO_PIN_3,0);
 		pumpc=off;
 	}
+}
+*/
+
+MainPump Nutrients(void){
+	if(TDS==TDS_Low){
+			HAL_GPIO_WritePin(GPIOB,GPIO_PIN_6,1);
+			pumpd=on;
+		}
+	if(TDS==TDS_High){
+		HAL_GPIO_WritePin(GPIOB,GPIO_PIN_3,1);
+		pumpc=on;
+	}
+	if(TDS==TDS_Good){
+		HAL_GPIO_WritePin(GPIOB,GPIO_PIN_6,0);
+		pumpd=off;
+		pumpc=off;
+	}
+return;
 }
 
 void get_TempHumid(void){
